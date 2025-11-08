@@ -1,12 +1,6 @@
 pipeline {
     agent any
     stages {
-        stage('Checkout') {
-            steps {
-                git 'https://github.com/ManiKanta-Attili/jenkins-pipeline-demo.git'
-            }
-        }
-
         stage('Build') {
             steps {
                 echo 'Building the Application...'
