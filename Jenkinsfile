@@ -44,11 +44,11 @@ pipeline {
                     sh '''
                         echo "Deploying container on EC2 via password-based SSH..."
                         sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no $DEPLOY_HOST "
-                            sudo docker login -u $DOCKERHUB_USER -p $PASS &&
-                            sudo docker pull $DOCKERHUB_USER/$IMAGE_NAME:latest &&
-                            sudo docker stop $IMAGE_NAME || true &&
-                            sudo docker rm $IMAGE_NAME || true &&
-                            sudo docker run -d --name $IMAGE_NAME $DOCKERHUB_USER/$IMAGE_NAME:latest
+                            docker login -u $DOCKERHUB_USER -p $PASS &&
+                            docker pull $DOCKERHUB_USER/$IMAGE_NAME:latest &&
+                            docker stop $IMAGE_NAME || true &&
+                            docker rm $IMAGE_NAME || true &&
+                            docker run -d --name $IMAGE_NAME $DOCKERHUB_USER/$IMAGE_NAME:latest
                         "
                     '''
                 }
