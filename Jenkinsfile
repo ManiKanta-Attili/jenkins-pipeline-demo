@@ -44,7 +44,6 @@ pipeline {
                     sh '''
                         echo "Deploying container on EC2 via password-based SSH..."
                         sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no $DEPLOY_HOST "
-                            docker login -u $DOCKERHUB_USER -p $PASS &&
                             docker pull $DOCKERHUB_USER/$IMAGE_NAME:latest &&
                             docker stop $IMAGE_NAME || true &&
                             docker rm $IMAGE_NAME || true &&
