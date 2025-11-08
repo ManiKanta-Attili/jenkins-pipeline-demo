@@ -47,7 +47,7 @@ pipeline {
                             docker pull $DOCKERHUB_USER/$IMAGE_NAME:latest &&
                             docker stop $IMAGE_NAME || true &&
                             docker rm $IMAGE_NAME || true &&
-                            docker run -d -p 80:5000 --name $IMAGE_NAME $DOCKERHUB_USER/$IMAGE_NAME:latest
+                            docker run -d --name $IMAGE_NAME $DOCKERHUB_USER/$IMAGE_NAME:latest
                         "
                     '''
                 }
