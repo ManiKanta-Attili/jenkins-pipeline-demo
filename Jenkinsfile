@@ -4,7 +4,7 @@ pipeline {
     environment {
         IMAGE_NAME = "jenkins-pipeline-demo"
         DOCKERHUB_USER = "maniattili"
-        DEPLOY_HOST = "zrybs@98.80.72.236"
+        DEPLOY_HOST = "zrybs@34.228.160.8"
     }
 
     stages {
