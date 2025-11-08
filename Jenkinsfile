@@ -37,24 +37,26 @@ pipeline {
                 }
             }
         }
-
+        
         stage('Deploy to EC2') {
             steps {
-                sshagent(['ec2-ssh']) {
+                withCredentials([usernamePassword(credentialsId: 'ec2-ssh-password', usernameVariable: 'SSH_USER', passwordVariable: 'SSH_PASS')]) {
                     sh '''
-                        echo "Deploying container on EC2..."
-                        ssh -o StrictHostKeyChecking=no $DEPLOY_HOST '
+                        echo "Deploying container on EC2 via password-based SSH..."
+                        sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no $SSH_USER@<EC2-PUBLIC-IP> "
                             sudo docker login -u $DOCKERHUB_USER -p $PASS &&
                             sudo docker pull $DOCKERHUB_USER/$IMAGE_NAME:latest &&
                             sudo docker stop $IMAGE_NAME || true &&
                             sudo docker rm $IMAGE_NAME || true &&
                             sudo docker run -d --name $IMAGE_NAME $DOCKERHUB_USER/$IMAGE_NAME:latest
-                        '
+                        "
                     '''
                 }
             }
         }
-    }
+
+    
+ 
 
     post {
         always {
@@ -63,4 +65,3 @@ pipeline {
         }
     }
 }
-
