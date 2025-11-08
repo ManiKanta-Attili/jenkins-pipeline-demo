@@ -4,7 +4,7 @@ pipeline {
     environment {
         IMAGE_NAME = "jenkins-pipeline-demo"
         DOCKERHUB_USER = "maniattili"
-        DEPLOY_HOST = "ubuntu@98.80.72.236"
+        DEPLOY_HOST = "zrybs@98.80.72.236"
     }
 
     stages {
@@ -43,7 +43,7 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: 'ec2-ssh-password', usernameVariable: 'SSH_USER', passwordVariable: 'SSH_PASS')]) {
                     sh '''
                         echo "Deploying container on EC2 via password-based SSH..."
-                        sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no $SSH_USER@<EC2-PUBLIC-IP> "
+                        sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no $DEPLOY_HOST "
                             sudo docker login -u $DOCKERHUB_USER -p $PASS &&
                             sudo docker pull $DOCKERHUB_USER/$IMAGE_NAME:latest &&
                             sudo docker stop $IMAGE_NAME || true &&
