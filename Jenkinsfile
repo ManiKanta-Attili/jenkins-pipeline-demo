@@ -1,8 +1,10 @@
 pipeline {
     agent any
+
     environment {
         IMAGE_NAME = "jenkins-pipeline-demo"
         DOCKERHUB_USER = "maniattili"
+        DEPLOY_HOST = "ubuntu@98.80.72.236"
     }
 
     stages {
@@ -23,33 +25,31 @@ pipeline {
             }
         }
 
-        stage('Docker Build') {
-            steps {
-                echo "Building Docker image..."
-                sh '''
-                    docker build -t $IMAGE_NAME:latest .
-                    docker images | grep $IMAGE_NAME
-                '''
-            }
-        }
-
-        stage('Docker Run (Test)') {
-            steps {
-                echo "Running Docker container..."
-                sh '''
-                    docker run --rm $IMAGE_NAME:latest
-                '''
-            }
-        }
-
-        stage('Docker Push') {
+        stage('Docker Build & Push') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-login', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
                     sh '''
-                        echo "Pushing image to DockerHub..."
+                        echo "Building and pushing Docker image..."
                         docker login -u $USER -p $PASS
-                        docker tag $IMAGE_NAME:latest $USER/$IMAGE_NAME:latest
+                        docker build -t $USER/$IMAGE_NAME:latest .
                         docker push $USER/$IMAGE_NAME:latest
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy to EC2') {
+            steps {
+                sshagent(['ec2-ssh']) {
+                    sh '''
+                        echo "Deploying container on EC2..."
+                        ssh -o StrictHostKeyChecking=no $DEPLOY_HOST '
+                            sudo docker login -u $DOCKERHUB_USER -p $PASS &&
+                            sudo docker pull $DOCKERHUB_USER/$IMAGE_NAME:latest &&
+                            sudo docker stop $IMAGE_NAME || true &&
+                            sudo docker rm $IMAGE_NAME || true &&
+                            sudo docker run -d --name $IMAGE_NAME $DOCKERHUB_USER/$IMAGE_NAME:latest
+                        '
                     '''
                 }
             }
@@ -63,3 +63,4 @@ pipeline {
         }
     }
 }
+
