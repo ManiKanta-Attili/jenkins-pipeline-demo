@@ -51,13 +51,13 @@ pipeline {
                     sh '''
                         echo "Starting Blue-Green Deployment..."
 
-                        DOCKER_USER=$DOCKERHUB_USER
-                        IMAGE=$IMAGE_NAME
-                        TAG=$IMAGE_TAG
-
-                        # Use heredoc safely — must quote EOF to prevent Jenkins from closing early
-                        sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no $SSH_USER@$DEPLOY_HOST 'bash -s' <<'REMOTE_SCRIPT'
+                        sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no $SSH_USER@$DEPLOY_HOST <<'EOF'
                             set -e
+
+                            DOCKER_USER="maniattili"
+                            IMAGE="jenkins-pipeline-demo"
+                            TAG="v1.0.${BUILD_NUMBER}"
+
                             echo "Pulling new image..."
                             docker pull ${DOCKER_USER}/${IMAGE}:${TAG}
 
@@ -75,11 +75,9 @@ pipeline {
                             echo "Active environment: $ACTIVE_COLOR"
                             echo "Deploying new version to $IDLE_COLOR on port $IDLE_PORT"
 
-                            # Stop and remove old idle container if any
                             docker stop ${IMAGE}-$IDLE_COLOR || true
                             docker rm ${IMAGE}-$IDLE_COLOR || true
 
-                            # Run new version
                             docker run -d -p $IDLE_PORT:5000 --name ${IMAGE}-$IDLE_COLOR ${DOCKER_USER}/${IMAGE}:${TAG}
 
                             echo "Health checking new container on port $IDLE_PORT..."
@@ -91,11 +89,11 @@ pipeline {
                                 docker rm ${IMAGE}-$ACTIVE_COLOR || true
                                 echo "Now serving: $IDLE_COLOR"
                             else
-                                echo "❌ Health check failed — keeping $ACTIVE_COLOR live"
+                                echo "❌ New version unhealthy — keeping $ACTIVE_COLOR live"
                                 docker stop ${IMAGE}-$IDLE_COLOR || true
                                 docker rm ${IMAGE}-$IDLE_COLOR || true
                             fi
-REMOTE_SCRIPT
+EOF
                     '''
                 }
             }
