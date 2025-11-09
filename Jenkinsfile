@@ -50,7 +50,7 @@ pipeline {
                withCredentials([usernamePassword(credentialsId: 'ec2-ssh-password', usernameVariable: 'SSH_USER', passwordVariable: 'SSH_PASS')]) {
                    sh '''
                        echo "Deploying version $IMAGE_TAG on EC2..."
-                       sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no $SSH_USER@98.80.72.236 "
+                       sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no $DEPLOY_HOST "
                            docker pull $DOCKERHUB_USER/$IMAGE_NAME:$IMAGE_TAG &&
                            docker stop $IMAGE_NAME || true &&
                            docker rm $IMAGE_NAME || true &&
