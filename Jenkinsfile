@@ -28,7 +28,7 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 script {
-                    def versiontag = "v1.0.${env.BUILD_NUMBER}"
+                    def versionTag = "v1.0.${env.BUILD_NUMBER}"
                     env.IMAGE_TAG = versionTag
                     echo "Building Docker image with tag: ${versionTag}"
                 }
