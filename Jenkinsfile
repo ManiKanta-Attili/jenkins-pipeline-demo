@@ -4,7 +4,7 @@ pipeline {
     environment {
         IMAGE_NAME = "jenkins-pipeline-demo"
         DOCKERHUB_USER = "maniattili"
-        DEPLOY_HOST = "zrybs@13.221.130.121"
+        DEPLOY_HOST = "13.221.130.121"
     }
 
     stages {
@@ -32,6 +32,7 @@ pipeline {
                     env.IMAGE_TAG = versionTag
                     echo "Building Docker image with tag: ${versionTag}"
                 }
+
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-login', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
                     sh '''
                         echo "Building and pushing Docker image..."
@@ -43,65 +44,63 @@ pipeline {
                 }
             }
         }
-        
-	stage('Blue-Green Deploy to EC2') {
-	    steps {
-		withCredentials([usernamePassword(credentialsId: 'ec2-ssh-password', usernameVariable: 'SSH_USER', passwordVariable: 'SSH_PASS')]) {
-		    sh '''
-			echo "Starting Blue-Green Deployment..."
 
-			# Local variable assignment for clarity
-			DOCKER_USER=$DOCKERHUB_USER
-			IMAGE=$IMAGE_NAME
-			TAG=$IMAGE_TAG
+        stage('Blue-Green Deploy to EC2') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'ec2-ssh-password', usernameVariable: 'SSH_USER', passwordVariable: 'SSH_PASS')]) {
+                    sh '''
+                        echo "Starting Blue-Green Deployment..."
 
-			sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no $SSH_USER@13.221.130.121 bash -s <<EOF
-			    echo "Pulling new image..."
-			    docker pull ${DOCKER_USER}/${IMAGE}:${TAG}
+                        DOCKER_USER=$DOCKERHUB_USER
+                        IMAGE=$IMAGE_NAME
+                        TAG=$IMAGE_TAG
 
-			    # Detect active environment
-			    if docker ps --format '{{.Names}}' | grep -q '${IMAGE}-blue'; then
-				ACTIVE_COLOR=blue
-				IDLE_COLOR=green
-				IDLE_PORT=5001
-			    else
-				ACTIVE_COLOR=green
-				IDLE_COLOR=blue
-				IDLE_PORT=5000
-			    fi
+                        # Use heredoc safely — must quote EOF to prevent Jenkins from closing early
+                        sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no $SSH_USER@$DEPLOY_HOST 'bash -s' <<'REMOTE_SCRIPT'
+                            set -e
+                            echo "Pulling new image..."
+                            docker pull ${DOCKER_USER}/${IMAGE}:${TAG}
 
-			    echo "Active environment: \$ACTIVE_COLOR"
-			    echo "Deploying new version to \$IDLE_COLOR on port \$IDLE_PORT"
+                            # Detect active environment
+                            if docker ps --format "{{.Names}}" | grep -q "${IMAGE}-blue"; then
+                                ACTIVE_COLOR=blue
+                                IDLE_COLOR=green
+                                IDLE_PORT=5001
+                            else
+                                ACTIVE_COLOR=green
+                                IDLE_COLOR=blue
+                                IDLE_PORT=5000
+                            fi
 
-			    # Stop and remove old idle container if any
-			    docker stop ${IMAGE}-\$IDLE_COLOR || true
-			    docker rm ${IMAGE}-\$IDLE_COLOR || true
+                            echo "Active environment: $ACTIVE_COLOR"
+                            echo "Deploying new version to $IDLE_COLOR on port $IDLE_PORT"
 
-			    # Run new version
-			    docker run -d -p \$IDLE_PORT:5000 --name ${IMAGE}-\$IDLE_COLOR ${DOCKER_USER}/${IMAGE}:${TAG}
+                            # Stop and remove old idle container if any
+                            docker stop ${IMAGE}-$IDLE_COLOR || true
+                            docker rm ${IMAGE}-$IDLE_COLOR || true
 
-			    echo "Health checking new container on port \$IDLE_PORT..."
-			    sleep 10
+                            # Run new version
+                            docker run -d -p $IDLE_PORT:5000 --name ${IMAGE}-$IDLE_COLOR ${DOCKER_USER}/${IMAGE}:${TAG}
 
-			    if curl -s http://localhost:\$IDLE_PORT | grep -q 'Hello Jenkins'; then
-				echo "✅ New version healthy — switching traffic"
-				docker stop ${IMAGE}-\$ACTIVE_COLOR || true
-				docker rm ${IMAGE}-\$ACTIVE_COLOR || true
-				echo "Now serving: \$IDLE_COLOR"
-			    else
-				echo "❌ Health check failed — keeping \$ACTIVE_COLOR live"
-				docker stop ${IMAGE}-\$IDLE_COLOR || true
-				docker rm ${IMAGE}-\$IDLE_COLOR || true
-			    fi
-	EOF
-		    '''
-		}
-	    }
-	}
+                            echo "Health checking new container on port $IDLE_PORT..."
+                            sleep 10
 
-}
-    
- 
+                            if curl -s http://localhost:$IDLE_PORT | grep -q "Hello Jenkins"; then
+                                echo "✅ New version healthy — switching traffic"
+                                docker stop ${IMAGE}-$ACTIVE_COLOR || true
+                                docker rm ${IMAGE}-$ACTIVE_COLOR || true
+                                echo "Now serving: $IDLE_COLOR"
+                            else
+                                echo "❌ Health check failed — keeping $ACTIVE_COLOR live"
+                                docker stop ${IMAGE}-$IDLE_COLOR || true
+                                docker rm ${IMAGE}-$IDLE_COLOR || true
+                            fi
+REMOTE_SCRIPT
+                    '''
+                }
+            }
+        }
+    }
 
     post {
         always {
@@ -110,3 +109,4 @@ pipeline {
         }
     }
 }
+
