@@ -51,15 +51,15 @@ pipeline {
                     sh '''
                         echo "Starting Blue-Green Deployment..."
 
-                        sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no $SSH_USER@$DEPLOY_HOST <<EOF
-                            set -e
+			sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no $SSH_USER@$DEPLOY_HOST <<EOF
+			   set -e
 
-                            DOCKER_USER="$DOCKERHUB_USER"
-                            IMAGE="$IMAGE_NAME"
-                            TAG="$IMAGE_TAG"
+			   DOCKER_USER="${DOCKERHUB_USER}"
+			   IMAGE="${IMAGE_NAME}"
+			   TAG="${IMAGE_TAG}"
 
-                            echo "Pulling new image: ${DOCKER_USER}/${IMAGE}:${TAG}"
-                            docker pull ${DOCKER_USER}/${IMAGE}:${TAG}
+			   echo "Pulling new image: \$DOCKER_USER/\$IMAGE:\$TAG"
+			   docker pull \$DOCKER_USER/\$IMAGE:\$TAG
 
                             # Detect active environment
                             if docker ps --format "{{.Names}}" | grep -q "${IMAGE}-blue"; then
